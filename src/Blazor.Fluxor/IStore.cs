@@ -17,21 +17,21 @@ namespace Blazor.Fluxor
 		/// </summary>
 		/// <param name="effect">The instance of the effect to call back</param>
 		/// <seealso cref="IEffect.HandleAsync(object, IDispatcher)"/>
-		void AddEffect(IEffect effect);
+		Task AddEffect(IEffect effect);
 
 		/// <summary>
 		/// Adds a feature to the store. Once added, the feature will be notified of all actions dispatched
 		/// via the store so that it can keep its state up to date.
 		/// </summary>
 		/// <param name="feature">The feature to add</param>
-		void AddFeature(IFeature feature);
+		Task AddFeature(IFeature feature);
 
 		/// <summary>
 		/// Adds a Middleware instance to the store. The Middleware will be notified of various events ocurring
 		/// in the store and be able to influence what happens as a result.
 		/// </summary>
 		/// <param name="middleware">The instance of the Middleware to hook into the store</param>
-		void AddMiddleware(IMiddleware middleware);
+		Task AddMiddleware(IMiddleware middleware);
 
 		/// <summary>
 		/// Sometimes Middleware may need to indicate that code currently being executed is running within
@@ -63,7 +63,7 @@ namespace Blazor.Fluxor
 		/// <see cref="Middleware.IsInsideMiddlewareChange"/>
 		/// <seealso cref="ReduxDevTools.ReduxDevToolsMiddleware.OnJumpToState(object, ReduxDevTools.CallbackObjects.JumpToStateCallback)"/>
 		/// <seealso cref="Routing.RoutingMiddleware.LocationChanged(object, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs)"/>
-		IDisposable BeginInternalMiddlewareChange();
+		Task<IAsyncDisposable> BeginInternalMiddlewareChange();
 
 		/// <summary>
 		/// All of the features added to the store, keyed by their unique name.

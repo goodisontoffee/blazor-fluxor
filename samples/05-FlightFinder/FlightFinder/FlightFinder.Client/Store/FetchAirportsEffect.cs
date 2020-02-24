@@ -28,7 +28,7 @@ namespace FlightFinder.Client.Store
 				// Should really dispatch an error action
 			}
 			var completeAction = new FetchAirportsCompleteAction(airports);
-			dispatcher.Dispatch(completeAction);
+			await dispatcher.Dispatch(completeAction);
 		}
 	}
 }

@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Threading;
+using System.Threading.Tasks;
 
 namespace Blazor.Fluxor
 {
@@ -8,41 +8,41 @@ namespace Blazor.Fluxor
 	/// called.
 	/// </summary>
 	/// <seealso cref="IStore.BeginInternalMiddlewareChange()"/>
-	public sealed class DisposableCallback : IDisposable
+	public sealed class AsyncDisposableCallback : IAsyncDisposable
 	{
-		private readonly Action Action;
+		private readonly Func<Task> Function;
 		private bool IsDisposed;
 
 		/// <summary>
 		/// Creates an instance of the class
 		/// </summary>
-		/// <param name="action">The action to execute when the instance is disposed</param>
-		public DisposableCallback(Action action)
+		/// <param name="funtion">The function to execute when the instance is disposed</param>
+		public AsyncDisposableCallback(Func<Task> function)
 		{
-			Action = action ?? throw new ArgumentNullException(nameof(action));
+			Function = function ?? throw new ArgumentNullException(nameof(function));
 		}
 
 		/// <summary>
 		/// Executes the action when disposed
 		/// </summary>
-		public void Dispose()
+		public async ValueTask DisposeAsync()
 		{
 			if (IsDisposed)
-				throw new ObjectDisposedException(nameof(DisposableCallback));
+				throw new ObjectDisposedException(nameof(AsyncDisposableCallback));
 
 			IsDisposed = true;
 			GC.SuppressFinalize(this);
-			Action();
+			await Function();
 		}
 
 		/// <summary>
 		/// Throws an exception if this object is collected without being disposed
 		/// </summary>
 		/// <exception cref="InvalidOperationException">Thrown if the object is collected without being disposed</exception>
-		~DisposableCallback()
+		~AsyncDisposableCallback()
 		{
 			if (!IsDisposed)
-				throw new InvalidOperationException("DisposableCallback was not disposed");
+				throw new InvalidOperationException("AsyncDisposableCallback was not disposed");
 		}
 	}
 }

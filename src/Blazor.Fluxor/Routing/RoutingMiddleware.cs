@@ -27,11 +27,11 @@ namespace Blazor.Fluxor.Routing
 
 
 		/// <see cref="IMiddleware.InitializeAsync(IStore)"/>
-		public async override Task InitializeAsync(IStore store)
+		public override async Task InitializeAsync(IStore store)
 		{
 			await base.InitializeAsync(store);
 			// If the URL changed before we initialized then dispatch an action
-			Store.Dispatch(new Go(NavigationManager.Uri));
+			await Store.Dispatch(new Go(NavigationManager.Uri));
 		}
 
 		/// <see cref="Middleware.OnInternalMiddlewareChangeEnding"/>

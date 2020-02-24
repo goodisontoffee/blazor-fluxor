@@ -6,7 +6,9 @@ using Xunit;
 
 namespace Blazor.Fluxor.UnitTests.StoreTests.ThreadingTests
 {
-	public class Dispatch
+    using System.Threading.Tasks;
+
+    public class Dispatch : IAsyncLifetime
 	{
 		const int NumberOfThreads = 10;
 		const int NumberOfIncrementsPerThread = 1000;
@@ -22,7 +24,7 @@ namespace Blazor.Fluxor.UnitTests.StoreTests.ThreadingTests
 			var threads = new List<Thread>();
 			for (int i = 0; i < NumberOfThreads; i++)
 			{
-				var thread = new Thread(IncrementCounterInThread);
+				var thread = new Thread(async () => await IncrementCounterInThread());
 				thread.Start();
 				threads.Add(thread);
 			}
@@ -36,30 +38,34 @@ namespace Blazor.Fluxor.UnitTests.StoreTests.ThreadingTests
 			Assert.Equal(NumberOfThreads * NumberOfIncrementsPerThread, Feature.State.Counter);
 		}
 
-		private void IncrementCounterInThread()
+		private async Task IncrementCounterInThread()
 		{
 			Interlocked.Decrement(ref NumberOfThreadsWaitingToStart);
 			StartEvent.WaitOne();
 			var action = new IncrementCounterAction();
 			for (int i = 0; i < NumberOfIncrementsPerThread; i++)
 			{
-				Store.Dispatch(action);
+				await Store.Dispatch(action);
 			}
 		}
 
-		public Dispatch()
-		{
+        public async Task InitializeAsync()
+        {
 			StartEvent = new ManualResetEvent(false);
-			var storeInitializer = new TestStoreInitializer();
-			Store = new Store(storeInitializer);
-			Store.Initialize();
+            var storeInitializer = new TestStoreInitializer();
+            Store = await Fluxor.Store.Initialize(storeInitializer);
+            Store.Initialize();
 
-			Feature = new CounterFeature();
-			Store.AddFeature(Feature);
+            Feature = new CounterFeature();
+            await Store.AddFeature(Feature);
 
-			Feature.AddReducer(new IncrementCounterReducer());
-			storeInitializer.Complete();
+            Feature.AddReducer(new IncrementCounterReducer());
+            await storeInitializer.Complete();
 		}
 
-	}
+		public Task DisposeAsync()
+        {
+            return Task.CompletedTask;
+        }
+    }
 }

@@ -1,16 +1,17 @@
 ﻿using System;
+using System.Threading.Tasks;
 
 namespace Blazor.Fluxor.UnitTests.SupportFiles
 {
 	public class TestStoreInitializer : IStoreInitializationStrategy
 	{
-		Action Completed;
+		Func<Task> Completed;
 
-		public void Initialize(Action completed)
+		public void Initialize(Func<Task> completed)
 		{
 			Completed = completed;
-		}
+        }
 
-		public void Complete() => Completed();
+		public async Task Complete() => await Completed();
 	}
 }

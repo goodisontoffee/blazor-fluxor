@@ -24,7 +24,8 @@ namespace Blazor.Fluxor
 		}
 
 		/// See <see cref="IStoreInitializationStrategy.Initialize(Action)"/>
-		public void Initialize(Action completed) =>
+		public void Initialize(Func<Task> completed)
+		{
 			new Timer(async state =>
 			{
 				DateTime hardFailTime = DateTime.UtcNow.AddSeconds(1);
@@ -70,6 +71,7 @@ namespace Blazor.Fluxor
 							throw new StoreInitializationException("Store initialization error", err);
 						}
 					}
+
 					// If not successful then pause before retrying
 					if (!success)
 					{
@@ -80,7 +82,9 @@ namespace Blazor.Fluxor
 						await Task.Yield();
 					}
 				}
-				completed();
+
+				await completed();
 			}, null, 0, 0);
+		}
 	}
 }

@@ -20,12 +20,12 @@ namespace FlightFinder.Client.Store
 			try
 			{
 				Itinerary[] searchResults = await HttpClient.PostJsonAsync<Itinerary[]>("api/flightsearch", action.SearchCriteria);
-				dispatcher.Dispatch(new SearchCompleteAction(searchResults));
+				await dispatcher.Dispatch(new SearchCompleteAction(searchResults));
 			}
 			catch
 			{
 				// Should really dispatch an error action
-				dispatcher.Dispatch(new SearchCompleteAction(null));
+				await dispatcher.Dispatch(new SearchCompleteAction(null));
 			}
 		}
 	}

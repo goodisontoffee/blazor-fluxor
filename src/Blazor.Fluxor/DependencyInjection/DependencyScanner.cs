@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Threading.Tasks;
 
 namespace Blazor.Fluxor.DependencyInjection
 {
@@ -70,29 +71,38 @@ namespace Blazor.Fluxor.DependencyInjection
 			serviceCollection.AddScoped(typeof(IStore), serviceProvider =>
 			{
 				var storeInitializationStrategy = serviceProvider.GetService<IStoreInitializationStrategy>();
-				var store = new Store(storeInitializationStrategy);
+				var store = Store.Initialize(storeInitializationStrategy).Result;
+				ICollection<Task> storeConfigurationTasks = new List<Task>();
+				
 				foreach (DiscoveredFeatureClass discoveredFeatureClass in discoveredFeatureClasses)
 				{
 					var feature = (IFeature)serviceProvider.GetService(discoveredFeatureClass.FeatureInterfaceGenericType);
-					store.AddFeature(feature);
+					storeConfigurationTasks.Add(store.AddFeature(feature));
 				}
 
 				foreach (DiscoveredEffectClass discoveredEffectClass in discoveredEffectClasses)
 				{
 					var effect = (IEffect)serviceProvider.GetService(discoveredEffectClass.ImplementingType);
-					store.AddEffect(effect);
+					storeConfigurationTasks.Add(store.AddEffect(effect));
 				}
 
 				foreach (DiscoveredEffectMethod discoveredEffectMethod in discoveredEffectMethods)
 				{
-					IEffect effect = EffectWrapperFactory.Create(serviceProvider, discoveredEffectMethod);
-					store.AddEffect(effect);
+					IEffect effect = EffectWrapperFactory.Create(serviceProvider, discoveredEffectMethod); 
+					storeConfigurationTasks.Add(store.AddEffect(effect));
 				}
 
 				foreach (Type middlewareType in Options.MiddlewareTypes)
 				{
 					var middleware = (IMiddleware)serviceProvider.GetService(middlewareType);
-					store.AddMiddleware(middleware);
+					storeConfigurationTasks.Add(store.AddMiddleware(middleware));
+				}
+
+				Task.WhenAll(storeConfigurationTasks).Wait();
+
+				foreach (var storeConfigurationTask in storeConfigurationTasks)
+				{
+					storeConfigurationTask.Wait();
 				}
 
 				return store;

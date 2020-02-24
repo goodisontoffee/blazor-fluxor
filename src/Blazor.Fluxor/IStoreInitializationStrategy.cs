@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading.Tasks;
 
 namespace Blazor.Fluxor
 {
@@ -10,7 +11,7 @@ namespace Blazor.Fluxor
 		/// <summary>
 		/// Initialises the store
 		/// </summary>
-		/// <param name="completed">The action to call back once the store is ready to be initialised</param>
-		void Initialize(Action completed);
+		/// <param name="completed">The function to call back once the store is ready to be initialised</param>
+		void Initialize(Func<Task> completed);
 	}
 }

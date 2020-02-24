@@ -17,17 +17,17 @@ namespace ReduxDevToolsIntegration.Client.Store.FetchData
 			HttpClient = httpClient;
 		}
 
-		protected async override Task HandleAsync(GetForecastDataAction action, IDispatcher dispatcher)
+		protected override async Task HandleAsync(GetForecastDataAction action, IDispatcher dispatcher)
 		{
 			try
 			{
 				WeatherForecast[] forecasts =
 					await HttpClient.GetJsonAsync<WeatherForecast[]>("api/SampleData/WeatherForecasts");
-				dispatcher.Dispatch(new GetForecastDataSuccessAction(forecasts));
+				await dispatcher.Dispatch(new GetForecastDataSuccessAction(forecasts));
 			}
 			catch (Exception e)
 			{
-				dispatcher.Dispatch(new GetForecastDataFailedAction(errorMessage: e.Message));
+				await dispatcher.Dispatch(new GetForecastDataFailedAction(errorMessage: e.Message));
 			}
 		}
 	}

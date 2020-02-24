@@ -1,5 +1,6 @@
 ﻿using Blazor.Fluxor.UnitTests.SupportFiles;
 using Moq;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace Blazor.Fluxor.UnitTests.StoreTests
@@ -11,7 +12,7 @@ namespace Blazor.Fluxor.UnitTests.StoreTests
 			TestStoreInitializer StoreInitializer;
 
 			[Fact]
-			public void ExecutesOnAllRegisteredMiddlewares()
+			public async Task ExecutesOnAllRegisteredMiddlewares()
 			{
 				int disposeCount = 0;
 				var mockMiddleware = new Mock<IMiddleware>();
@@ -19,16 +20,16 @@ namespace Blazor.Fluxor.UnitTests.StoreTests
 					.Setup(x => x.BeginInternalMiddlewareChange())
 					.Returns(new DisposableCallback(() => disposeCount++));
 
-				var subject = new Store(StoreInitializer);
-				subject.AddMiddleware(mockMiddleware.Object);
+				var subject = await Store.Initialize(StoreInitializer);
+				await subject.AddMiddleware(mockMiddleware.Object);
 
-				var disposable1 = subject.BeginInternalMiddlewareChange();
-				var disposable2 = subject.BeginInternalMiddlewareChange();
+				var disposable1 = await subject.BeginInternalMiddlewareChange();
+				var disposable2 = await subject.BeginInternalMiddlewareChange();
 
-				disposable1.Dispose();
+				await disposable1.DisposeAsync();
 				Assert.Equal(0, disposeCount);
 
-				disposable2.Dispose();
+				await disposable2.DisposeAsync();
 				Assert.Equal(1, disposeCount);
 			}
 

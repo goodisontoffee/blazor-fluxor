@@ -1,6 +1,7 @@
 ﻿using Blazor.Fluxor.UnitTests.SupportFiles;
 using Moq;
 using System;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace Blazor.Fluxor.UnitTests.StoreTests
@@ -10,7 +11,7 @@ namespace Blazor.Fluxor.UnitTests.StoreTests
 		public class AddFeature
 		{
 			[Fact]
-			public void AddsFeatureToFeaturesDictionary()
+			public async Task AddsFeatureToFeaturesDictionary()
 			{
 				const string featureName = "123";
 				var mockFeature = new Mock<IFeature>();
@@ -18,14 +19,14 @@ namespace Blazor.Fluxor.UnitTests.StoreTests
 					.Setup(x => x.GetName())
 					.Returns(featureName);
 
-				var subject = new Store(new TestStoreInitializer());
-				subject.AddFeature(mockFeature.Object);
+				var subject = await Store.Initialize(new TestStoreInitializer());
+				await subject.AddFeature(mockFeature.Object);
 
 				Assert.Same(mockFeature.Object, subject.Features[featureName]);
 			}
 
 			[Fact]
-			public void ThrowsArgumentException_WhenFeatureWithSameNameAlreadyExists()
+			public async Task ThrowsArgumentException_WhenFeatureWithSameNameAlreadyExists()
 			{
 				const string featureName = "1234";
 				var mockFeature = new Mock<IFeature>();
@@ -33,12 +34,12 @@ namespace Blazor.Fluxor.UnitTests.StoreTests
 					.Setup(x => x.GetName())
 					.Returns(featureName);
 
-				var subject = new Store(new TestStoreInitializer());
-				subject.AddFeature(mockFeature.Object);
+				var subject = await Store.Initialize(new TestStoreInitializer());
+				await subject.AddFeature(mockFeature.Object);
 
-				Assert.Throws<ArgumentException>(() =>
+				await Assert.ThrowsAsync<ArgumentException>(async () =>
 				{
-					subject.AddFeature(mockFeature.Object);
+					await subject.AddFeature(mockFeature.Object);
 				});
 			}
 		}

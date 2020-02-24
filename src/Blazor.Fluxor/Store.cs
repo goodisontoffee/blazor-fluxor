@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
@@ -17,7 +18,7 @@ namespace Blazor.Fluxor
 		/// <see cref="IStore.Initialized"/>
 		public Task Initialized => InitializedCompletionSource.Task;
 
-		private readonly object SyncRoot = new object();
+		private readonly SemaphoreSlim mutex = new SemaphoreSlim(1, 1);
 		private IStoreInitializationStrategy StoreInitializationStrategy;
 		private readonly Dictionary<string, IFeature> FeaturesByName = new Dictionary<string, IFeature>(StringComparer.InvariantCultureIgnoreCase);
 		private readonly List<IEffect> Effects = new List<IEffect>();
@@ -32,11 +33,18 @@ namespace Blazor.Fluxor
 		private bool IsInsideMiddlewareChange => BeginMiddlewareChangeCount > 0;
 		private Action<IFeature, object> IFeatureReceiveDispatchNotificationFromStore;
 
+		public static async Task<Store> Initialize(IStoreInitializationStrategy storeInitializationStrategy)
+		{
+			var store = new Store(storeInitializationStrategy);
+			await store.Dispatch(new StoreInitializedAction());
+			return store;
+		}
+
 		/// <summary>
 		/// Creates an instance of the store
 		/// </summary>
 		/// <param name="storeInitializationStrategy">The strategy used to initialise the store</param>
-		public Store(IStoreInitializationStrategy storeInitializationStrategy)
+		private Store(IStoreInitializationStrategy storeInitializationStrategy)
 		{
 			StoreInitializationStrategy = storeInitializationStrategy;
 
@@ -45,29 +53,35 @@ namespace Blazor.Fluxor
 				.GetMethod(nameof(IFeature.ReceiveDispatchNotificationFromStore));
 			IFeatureReceiveDispatchNotificationFromStore = (Action<IFeature, object>)
 				Delegate.CreateDelegate(typeof(Action<IFeature, object>), dispatchNotifictionFromStoreMethodInfo);
-
-			Dispatch(new StoreInitializedAction());
 		}
 
 		/// <see cref="IStore.AddFeature(IFeature)"/>
-		public void AddFeature(IFeature feature)
+		public async Task AddFeature(IFeature feature)
 		{
 			if (feature == null)
 				throw new ArgumentNullException(nameof(feature));
 
-			lock (SyncRoot)
+			await mutex.WaitAsync().ConfigureAwait(false);
+
+			try
 			{
 				FeaturesByName.Add(feature.GetName(), feature);
+			}
+			finally
+			{
+				mutex.Release();
 			}
 		}
 
 		/// <see cref="IDispatcher.Dispatch(object)"/>
-		public void Dispatch(object action)
+		public async Task Dispatch(object action)
 		{
 			if (action == null)
 				throw new ArgumentNullException(nameof(action));
 
-			lock (SyncRoot)
+			await mutex.WaitAsync().ConfigureAwait(false);
+
+			try
 			{
 				// Do not allow task dispatching inside a middleware-change.
 				// These change cycles are for things like "jump to state" in Redux Dev Tools
@@ -93,24 +107,36 @@ namespace Blazor.Fluxor
 
 				DequeueActions();
 			}
+			finally
+			{
+				mutex.Release();
+			}
 		}
 
 		/// <see cref="IStore.AddEffect(IEffect)"/>
-		public void AddEffect(IEffect effect)
+		public async Task AddEffect(IEffect effect)
 		{
 			if (effect == null)
 				throw new ArgumentNullException(nameof(effect));
 
-			lock (SyncRoot)
+			await mutex.WaitAsync().ConfigureAwait(false);
+
+			try
 			{
 				Effects.Add(effect);
+			}
+			finally
+			{
+				mutex.Release();
 			}
 		}
 
 		/// <see cref="IStore.AddMiddleware(IMiddleware)"/>
-		public void AddMiddleware(IMiddleware middleware)
+		public async Task AddMiddleware(IMiddleware middleware)
 		{
-			lock (SyncRoot)
+			await mutex.WaitAsync().ConfigureAwait(false);
+
+			try
 			{
 				Middlewares.Add(middleware);
 				ReversedMiddlewares.Insert(0, middleware);
@@ -122,19 +148,29 @@ namespace Blazor.Fluxor
 					middleware.AfterInitializeAllMiddlewares();
 				}
 			}
+			finally
+			{
+				mutex.Release();
+			}
 		}
 
 		/// <see cref="IStore.BeginInternalMiddlewareChange"/>
-		public IDisposable BeginInternalMiddlewareChange()
+		public async Task<IAsyncDisposable> BeginInternalMiddlewareChange()
 		{
-			lock (SyncRoot)
+			await mutex.WaitAsync().ConfigureAwait(false);
+
+			try
 			{
 				BeginMiddlewareChangeCount++;
 				IDisposable[] disposables = Middlewares
 					.Select(x => x.BeginInternalMiddlewareChange())
 					.ToArray();
 
-				return new DisposableCallback(() => EndMiddlewareChange(disposables));
+				return new AsyncDisposableCallback(async () => await EndMiddlewareChange(disposables));
+			}
+			finally
+			{
+				mutex.Release();
 			}
 		}
 
@@ -171,13 +207,19 @@ namespace Blazor.Fluxor
 			};
 		}
 
-		private void EndMiddlewareChange(IDisposable[] disposables)
+		private async Task EndMiddlewareChange(IDisposable[] disposables)
 		{
-			lock (SyncRoot)
+			await mutex.WaitAsync().ConfigureAwait(false);
+
+			try
 			{
 				BeginMiddlewareChangeCount--;
 				if (BeginMiddlewareChangeCount == 0)
 					disposables.ToList().ForEach(x => x.Dispose());
+			}
+			finally
+			{
+				mutex.Release();
 			}
 		}
 
@@ -188,7 +230,7 @@ namespace Blazor.Fluxor
 				effect.HandleAsync(action, this);
 		}
 
-		private async void InitializeMiddlewares()
+		private async Task InitializeMiddlewares()
 		{
 			foreach (IMiddleware middleware in Middlewares)
 			{
@@ -208,17 +250,23 @@ namespace Blazor.Fluxor
 			Middlewares.ForEach(x => x.AfterDispatch(actionJustDispatched));
 		}
 
-		private void ActivateStore()
+		private async Task ActivateStore()
 		{
 			if (HasActivatedStore)
 				return;
 
-			lock (SyncRoot)
+			await mutex.WaitAsync().ConfigureAwait(false);
+
+			try
 			{
 				HasActivatedStore = true;
-				InitializeMiddlewares();
+				await InitializeMiddlewares();
 				DequeueActions();
 				InitializedCompletionSource.SetResult(true);
+			}
+			catch
+			{
+				mutex.Release();
 			}
 		}
 

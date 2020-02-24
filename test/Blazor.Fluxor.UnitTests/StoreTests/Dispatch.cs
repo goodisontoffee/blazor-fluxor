@@ -2,6 +2,7 @@
 using Blazor.Fluxor.UnitTests.SupportFiles;
 using Moq;
 using System;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace Blazor.Fluxor.UnitTests.StoreTests
@@ -13,34 +14,34 @@ namespace Blazor.Fluxor.UnitTests.StoreTests
 			TestStoreInitializer StoreInitializer;
 
 			[Fact]
-			public void ThrowsArgumentNullException_WhenActionIsNull()
+			public async Task ThrowsArgumentNullException_WhenActionIsNull()
 			{
-				var subject = new Store(StoreInitializer);
-				Assert.Throws<ArgumentNullException>(() => subject.Dispatch(null));
+				var subject = await Store.Initialize(StoreInitializer);
+				await Assert.ThrowsAsync<ArgumentNullException>(async () => await subject.Dispatch(null));
 			}
 
 			[Fact]
-			public void DoesNotDispatchActions_WhenIsInsideMiddlewareChange()
+			public async Task DoesNotDispatchActions_WhenIsInsideMiddlewareChange()
 			{
 				var mockMiddleware = MockMiddlewareFactory.Create();
 
-				var subject = new Store(StoreInitializer);
+				var subject = await Store.Initialize(StoreInitializer);
 				subject.Initialize();
-				subject.AddMiddleware(mockMiddleware.Object);
+				await subject.AddMiddleware(mockMiddleware.Object);
 
-				StoreInitializer.Complete();
+				await StoreInitializer.Complete();
 
 				var testAction = new TestAction();
-				using (subject.BeginInternalMiddlewareChange())
+                await using (await subject.BeginInternalMiddlewareChange())
 				{
-					subject.Dispatch(testAction);
+					await subject.Dispatch(testAction);
 				}
 
 				mockMiddleware.Verify(x => x.MayDispatchAction(testAction), Times.Never);
 			}
 
 			[Fact]
-			public void DoesNotSendActionToFeatures_WhenMiddlewareForbidsIt()
+			public async Task DoesNotSendActionToFeatures_WhenMiddlewareForbidsIt()
 			{
 				var testAction = new TestAction();
 				var mockFeature = MockFeatureFactory.Create();
@@ -48,62 +49,62 @@ namespace Blazor.Fluxor.UnitTests.StoreTests
 				mockMiddleware
 					.Setup(x => x.MayDispatchAction(testAction))
 					.Returns(false);
-				var subject = new Store(StoreInitializer);
+				var subject = await Store.Initialize(StoreInitializer);
 				subject.Initialize();
 
-				StoreInitializer.Complete();
-				subject.Dispatch(testAction);
+				await StoreInitializer.Complete();
+				await subject.Dispatch(testAction);
 
 				mockFeature
 					.Verify(x => x.ReceiveDispatchNotificationFromStore(testAction), Times.Never);
 			}
 
 			[Fact]
-			public void ExecutesBeforeDispatchActionOnMiddlewares()
+			public async Task ExecutesBeforeDispatchActionOnMiddlewares()
 			{
 				var testAction = new TestAction();
 				var mockMiddleware = MockMiddlewareFactory.Create();
-				var subject = new Store(StoreInitializer);
+				var subject = await Store.Initialize(StoreInitializer);
 				subject.Initialize();
-				subject.AddMiddleware(mockMiddleware.Object);
+				await subject.AddMiddleware(mockMiddleware.Object);
 
-				StoreInitializer.Complete();
-				subject.Dispatch(testAction);
+				await StoreInitializer.Complete();
+				await subject.Dispatch(testAction);
 
 				mockMiddleware
 					.Verify(x => x.BeforeDispatch(testAction), Times.Once);
 			}
 
 			[Fact]
-			public void NotifiesFeatures()
+			public async Task NotifiesFeatures()
 			{
 				var mockFeature = MockFeatureFactory.Create();
-				var subject = new Store(StoreInitializer);
-				subject.AddFeature(mockFeature.Object);
+				var subject = await Store.Initialize(StoreInitializer);
+				await subject.AddFeature(mockFeature.Object);
 				subject.Initialize();
 
 				var testAction = new TestAction();
-				StoreInitializer.Complete();
-				subject.Dispatch(testAction);
+				await StoreInitializer.Complete();
+				await subject.Dispatch(testAction);
 
 				mockFeature
 					.Verify(x => x.ReceiveDispatchNotificationFromStore(testAction));
 			}
 
 			[Fact]
-			public void DispatchesTasksFromEffect()
+			public async Task DispatchesTasksFromEffect()
 			{
 				var mockFeature = MockFeatureFactory.Create();
 				var actionToEmit1 = new TestActionFromEffect1();
 				var actionToEmit2 = new TestActionFromEffect2();
 				var actionsToEmit = new object[] { actionToEmit1, actionToEmit2 };
-				var subject = new Store(StoreInitializer);
+				var subject = await Store.Initialize(StoreInitializer);
 				subject.Initialize();
-				subject.AddFeature(mockFeature.Object);
-				subject.AddEffect(new EffectThatEmitsActions<TestAction>(actionsToEmit));
+				await subject.AddFeature(mockFeature.Object);
+				await subject.AddEffect(new EffectThatEmitsActions<TestAction>(actionsToEmit));
 
-				StoreInitializer.Complete();
-				subject.Dispatch(new TestAction());
+				await StoreInitializer.Complete();
+				await subject.Dispatch(new TestAction());
 
 				mockFeature
 					.Verify(x => x.ReceiveDispatchNotificationFromStore(actionToEmit1), Times.Once);
@@ -112,7 +113,7 @@ namespace Blazor.Fluxor.UnitTests.StoreTests
 			}
 
 			[Fact]
-			public void TriggersOnlyEffectsThatHandleTheDispatchedAction()
+			public async Task TriggersOnlyEffectsThatHandleTheDispatchedAction()
 			{
 				var mockIncompatibleEffect = new Mock<IEffect>();
 				mockIncompatibleEffect
@@ -123,14 +124,14 @@ namespace Blazor.Fluxor.UnitTests.StoreTests
 					.Setup(x => x.ShouldReactToAction(It.IsAny<object>()))
 					.Returns(true);
 
-				var subject = new Store(StoreInitializer);
+				var subject = await Store.Initialize(StoreInitializer);
 				subject.Initialize();
-				subject.AddEffect(mockIncompatibleEffect.Object);
-				subject.AddEffect(mockCompatibleEffect.Object);
-				StoreInitializer.Complete();
+				await subject.AddEffect(mockIncompatibleEffect.Object);
+				await subject.AddEffect(mockCompatibleEffect.Object);
+				await StoreInitializer.Complete();
 
 				var action = new TestAction();
-				subject.Dispatch(action);
+                await subject.Dispatch(action);
 
 				mockIncompatibleEffect.Verify(x => x.HandleAsync(action, It.IsAny<IDispatcher>()), Times.Never);
 				mockCompatibleEffect.Verify(x => x.HandleAsync(action, It.IsAny<IDispatcher>()), Times.Once);
@@ -141,7 +142,5 @@ namespace Blazor.Fluxor.UnitTests.StoreTests
 				StoreInitializer = new TestStoreInitializer();
 			}
 		}
-
-
-	}
+    }
 }

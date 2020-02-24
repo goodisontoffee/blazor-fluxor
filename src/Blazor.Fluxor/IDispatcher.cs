@@ -1,4 +1,6 @@
-﻿namespace Blazor.Fluxor
+﻿using System.Threading.Tasks;
+
+namespace Blazor.Fluxor
 {
 	/// <summary>
 	/// Interface that blazor components/pages should use to dispatch actions
@@ -15,6 +17,6 @@
 		/// effects (<see cref="IEffect"/>).
 		/// </remarks>
 		/// <param name="action">The action to dispatch to all features</param>
-		void Dispatch(object action);
+		Task Dispatch(object action);
 	}
 }

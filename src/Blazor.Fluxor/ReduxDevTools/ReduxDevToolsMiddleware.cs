@@ -72,10 +72,10 @@ namespace Blazor.Fluxor.ReduxDevTools
 			SequenceNumberOfCurrentState = SequenceNumberOfLatestState;
 		}
 
-		private void OnJumpToState(object sender, JumpToStateCallback e)
+		private async void OnJumpToState(object sender, JumpToStateCallback e)
 		{
 			SequenceNumberOfCurrentState = e.payload.actionId;
-			using (Store.BeginInternalMiddlewareChange())
+			await using (await Store.BeginInternalMiddlewareChange())
 			{
 				var newFeatureStates = Json.Deserialize<Dictionary<string, object>>(e.state);
 				foreach (KeyValuePair<string, object> newFeatureState in newFeatureStates)
