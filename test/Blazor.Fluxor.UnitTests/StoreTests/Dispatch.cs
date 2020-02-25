@@ -106,6 +106,9 @@ namespace Blazor.Fluxor.UnitTests.StoreTests
 				await StoreInitializer.Complete();
 				await subject.Dispatch(new TestAction());
 
+				// HACK : The effect dispatch isn't synchronous so we need to allow "a little time" to allow them to happen.
+                await Task.Delay(250);
+
 				mockFeature
 					.Verify(x => x.ReceiveDispatchNotificationFromStore(actionToEmit1), Times.Once);
 				mockFeature
