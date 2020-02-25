@@ -1,7 +1,6 @@
 ﻿using Blazor.Fluxor.UnitTests.StoreTests.ThreadingTests.CounterStore;
 using Blazor.Fluxor.UnitTests.SupportFiles;
 using System.Collections.Generic;
-using System.Threading;
 using Xunit;
 
 namespace Blazor.Fluxor.UnitTests.StoreTests.ThreadingTests
@@ -10,48 +9,36 @@ namespace Blazor.Fluxor.UnitTests.StoreTests.ThreadingTests
 
     public class Dispatch : IAsyncLifetime
 	{
-		const int NumberOfThreads = 10;
-		const int NumberOfIncrementsPerThread = 1000;
-		volatile int NumberOfThreadsWaitingToStart = NumberOfThreads;
+		const int NumberOfTasks = 10;
+		const int NumberOfIncrementsPerTask = 1000;
 
 		IStore Store;
 		IFeature<CounterState> Feature;
-		ManualResetEvent StartEvent;
 
 		[Fact]
-		public void DoesNotLoseState()
+		public async Task DoesNotLoseState()
 		{
-			var threads = new List<Thread>();
-			for (int i = 0; i < NumberOfThreads; i++)
-			{
-				var thread = new Thread(async () => await IncrementCounterInThread());
-				thread.Start();
-				threads.Add(thread);
+			var tasks = new List<Task>();
+			for (int i = 0; i < NumberOfTasks; i++)
+            {
+                tasks.Add(IncrementCounterInTask());
 			}
-			while (NumberOfThreadsWaitingToStart > 0)
-				Thread.Sleep(50);
 
-			StartEvent.Set();
-			foreach (Thread thread in threads)
-				thread.Join();
+            await Task.WhenAll(tasks);
 
-			Assert.Equal(NumberOfThreads * NumberOfIncrementsPerThread, Feature.State.Counter);
+			Assert.Equal(NumberOfTasks * NumberOfIncrementsPerTask, Feature.State.Counter);
 		}
 
-		private async Task IncrementCounterInThread()
+		private async Task IncrementCounterInTask()
 		{
-			Interlocked.Decrement(ref NumberOfThreadsWaitingToStart);
-			StartEvent.WaitOne();
-			var action = new IncrementCounterAction();
-			for (int i = 0; i < NumberOfIncrementsPerThread; i++)
+			for (int i = 0; i < NumberOfIncrementsPerTask; i++)
 			{
-				await Store.Dispatch(action);
+				await Store.Dispatch(new IncrementCounterAction());
 			}
 		}
 
         public async Task InitializeAsync()
         {
-			StartEvent = new ManualResetEvent(false);
             var storeInitializer = new TestStoreInitializer();
             Store = await Fluxor.Store.Initialize(storeInitializer);
             Store.Initialize();

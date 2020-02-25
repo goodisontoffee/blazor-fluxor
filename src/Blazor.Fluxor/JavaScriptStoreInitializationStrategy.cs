@@ -23,7 +23,9 @@ namespace Blazor.Fluxor
 			JSRuntime = jSRuntime;
 		}
 
-		/// See <see cref="IStoreInitializationStrategy.Initialize(Action)"/>
+		/// <see>
+		///     <cref>IStoreInitializationStrategy.Initialize(Func{Task}())</cref>
+		/// </see>
 		public void Initialize(Func<Task> completed)
 		{
 			new Timer(async state =>

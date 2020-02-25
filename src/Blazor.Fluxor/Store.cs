@@ -19,7 +19,7 @@ namespace Blazor.Fluxor
 		public Task Initialized => InitializedCompletionSource.Task;
 
 		private readonly SemaphoreSlim mutex = new SemaphoreSlim(1, 1);
-		private IStoreInitializationStrategy StoreInitializationStrategy;
+		private readonly IStoreInitializationStrategy StoreInitializationStrategy;
 		private readonly Dictionary<string, IFeature> FeaturesByName = new Dictionary<string, IFeature>(StringComparer.InvariantCultureIgnoreCase);
 		private readonly List<IEffect> Effects = new List<IEffect>();
 		private readonly List<IMiddleware> Middlewares = new List<IMiddleware>();
@@ -33,6 +33,11 @@ namespace Blazor.Fluxor
 		private bool IsInsideMiddlewareChange => BeginMiddlewareChangeCount > 0;
 		private Action<IFeature, object> IFeatureReceiveDispatchNotificationFromStore;
 
+		/// <summary>
+		/// Applies the supplied store initialization strategy to initialize the store then dispatches the StoreInitializedAction before returning the store.
+		/// </summary>
+		/// <param name="storeInitializationStrategy">The instance of <see cref="IStoreInitializationStrategy"/> to apply.</param>
+		/// <returns>The initialized store</returns>
 		public static async Task<Store> Initialize(IStoreInitializationStrategy storeInitializationStrategy)
 		{
 			var store = new Store(storeInitializationStrategy);
@@ -227,7 +232,9 @@ namespace Blazor.Fluxor
 		{
 			var effectsToTrigger = Effects.Where(x => x.ShouldReactToAction(action));
 			foreach (var effect in effectsToTrigger)
+			{
 				effect.HandleAsync(action, this);
+			}
 		}
 
 		private async Task InitializeMiddlewares()
@@ -264,7 +271,7 @@ namespace Blazor.Fluxor
 				DequeueActions();
 				InitializedCompletionSource.SetResult(true);
 			}
-			catch
+			finally
 			{
 				mutex.Release();
 			}

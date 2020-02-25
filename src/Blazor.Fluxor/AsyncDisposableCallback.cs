@@ -16,7 +16,7 @@ namespace Blazor.Fluxor
 		/// <summary>
 		/// Creates an instance of the class
 		/// </summary>
-		/// <param name="funtion">The function to execute when the instance is disposed</param>
+		/// <param name="function">The function to execute when the instance is disposed</param>
 		public AsyncDisposableCallback(Func<Task> function)
 		{
 			Function = function ?? throw new ArgumentNullException(nameof(function));
