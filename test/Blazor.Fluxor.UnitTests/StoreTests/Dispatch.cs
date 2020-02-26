@@ -6,7 +6,9 @@ using Xunit;
 
 namespace Blazor.Fluxor.UnitTests.StoreTests
 {
-	public partial class StoreTests
+    using System.Threading.Tasks;
+
+    public partial class StoreTests
 	{
 		public class Dispatch
 		{
@@ -20,7 +22,7 @@ namespace Blazor.Fluxor.UnitTests.StoreTests
 			}
 
 			[Fact]
-			public void DoesNotDispatchActions_WhenIsInsideMiddlewareChange()
+			public async Task DoesNotDispatchActions_WhenIsInsideMiddlewareChange()
 			{
 				var mockMiddleware = MockMiddlewareFactory.Create();
 
@@ -28,7 +30,7 @@ namespace Blazor.Fluxor.UnitTests.StoreTests
 				subject.Initialize();
 				subject.AddMiddleware(mockMiddleware.Object);
 
-				StoreInitializer.Complete();
+				await StoreInitializer.Complete();
 
 				var testAction = new TestAction();
 				using (subject.BeginInternalMiddlewareChange())
@@ -40,7 +42,7 @@ namespace Blazor.Fluxor.UnitTests.StoreTests
 			}
 
 			[Fact]
-			public void DoesNotSendActionToFeatures_WhenMiddlewareForbidsIt()
+			public async Task DoesNotSendActionToFeatures_WhenMiddlewareForbidsIt()
 			{
 				var testAction = new TestAction();
 				var mockFeature = MockFeatureFactory.Create();
@@ -51,7 +53,7 @@ namespace Blazor.Fluxor.UnitTests.StoreTests
 				var subject = new Store(StoreInitializer);
 				subject.Initialize();
 
-				StoreInitializer.Complete();
+				await StoreInitializer.Complete();
 				subject.Dispatch(testAction);
 
 				mockFeature
@@ -59,7 +61,7 @@ namespace Blazor.Fluxor.UnitTests.StoreTests
 			}
 
 			[Fact]
-			public void ExecutesBeforeDispatchActionOnMiddlewares()
+			public async Task ExecutesBeforeDispatchActionOnMiddlewares()
 			{
 				var testAction = new TestAction();
 				var mockMiddleware = MockMiddlewareFactory.Create();
@@ -67,7 +69,7 @@ namespace Blazor.Fluxor.UnitTests.StoreTests
 				subject.Initialize();
 				subject.AddMiddleware(mockMiddleware.Object);
 
-				StoreInitializer.Complete();
+				await StoreInitializer.Complete();
 				subject.Dispatch(testAction);
 
 				mockMiddleware
@@ -75,7 +77,7 @@ namespace Blazor.Fluxor.UnitTests.StoreTests
 			}
 
 			[Fact]
-			public void NotifiesFeatures()
+			public async Task NotifiesFeatures()
 			{
 				var mockFeature = MockFeatureFactory.Create();
 				var subject = new Store(StoreInitializer);
@@ -83,7 +85,7 @@ namespace Blazor.Fluxor.UnitTests.StoreTests
 				subject.Initialize();
 
 				var testAction = new TestAction();
-				StoreInitializer.Complete();
+				await StoreInitializer.Complete();
 				subject.Dispatch(testAction);
 
 				mockFeature
@@ -91,7 +93,7 @@ namespace Blazor.Fluxor.UnitTests.StoreTests
 			}
 
 			[Fact]
-			public void DispatchesTasksFromEffect()
+			public async Task DispatchesTasksFromEffect()
 			{
 				var mockFeature = MockFeatureFactory.Create();
 				var actionToEmit1 = new TestActionFromEffect1();
@@ -102,7 +104,7 @@ namespace Blazor.Fluxor.UnitTests.StoreTests
 				subject.AddFeature(mockFeature.Object);
 				subject.AddEffect(new EffectThatEmitsActions<TestAction>(actionsToEmit));
 
-				StoreInitializer.Complete();
+				await StoreInitializer.Complete();
 				subject.Dispatch(new TestAction());
 
 				mockFeature
@@ -112,7 +114,7 @@ namespace Blazor.Fluxor.UnitTests.StoreTests
 			}
 
 			[Fact]
-			public void TriggersOnlyEffectsThatHandleTheDispatchedAction()
+			public async Task TriggersOnlyEffectsThatHandleTheDispatchedAction()
 			{
 				var mockIncompatibleEffect = new Mock<IEffect>();
 				mockIncompatibleEffect
@@ -127,7 +129,7 @@ namespace Blazor.Fluxor.UnitTests.StoreTests
 				subject.Initialize();
 				subject.AddEffect(mockIncompatibleEffect.Object);
 				subject.AddEffect(mockCompatibleEffect.Object);
-				StoreInitializer.Complete();
+				await StoreInitializer.Complete();
 
 				var action = new TestAction();
 				subject.Dispatch(action);
@@ -140,8 +142,6 @@ namespace Blazor.Fluxor.UnitTests.StoreTests
 			{
 				StoreInitializer = new TestStoreInitializer();
 			}
-		}
-
-
+        }
 	}
 }

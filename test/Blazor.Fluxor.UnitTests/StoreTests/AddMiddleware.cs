@@ -1,5 +1,6 @@
 ﻿using Blazor.Fluxor.UnitTests.SupportFiles;
 using Moq;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace Blazor.Fluxor.UnitTests.StoreTests
@@ -11,11 +12,11 @@ namespace Blazor.Fluxor.UnitTests.StoreTests
 			TestStoreInitializer StoreInitializer;
 
 			[Fact]
-			public void ActivatesMiddleware_WhenPageHasAlreadyLoaded()
+			public async Task ActivatesMiddleware_WhenPageHasAlreadyLoaded()
 			{
 				var subject = new Store(StoreInitializer);
 				subject.Initialize();
-				StoreInitializer.Complete();
+				await StoreInitializer.Complete();
 
 				var mockMiddleware = new Mock<IMiddleware>();
 				subject.AddMiddleware(mockMiddleware.Object);
@@ -25,11 +26,11 @@ namespace Blazor.Fluxor.UnitTests.StoreTests
 			}
 
 			[Fact]
-			public void CallsAfterInitializeAllMiddlewares_WhenPageHasAlreadyLoaded()
+			public async Task CallsAfterInitializeAllMiddlewares_WhenPageHasAlreadyLoaded()
 			{
 				var subject = new Store(StoreInitializer);
 				subject.Initialize();
-				StoreInitializer.Complete();
+				await StoreInitializer.Complete();
 
 				var mockMiddleware = new Mock<IMiddleware>();
 				subject.AddMiddleware(mockMiddleware.Object);

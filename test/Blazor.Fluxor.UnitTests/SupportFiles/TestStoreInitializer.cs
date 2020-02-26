@@ -2,15 +2,17 @@
 
 namespace Blazor.Fluxor.UnitTests.SupportFiles
 {
-	public class TestStoreInitializer : IStoreInitializationStrategy
-	{
-		Action Completed;
+    using System.Threading.Tasks;
 
-		public void Initialize(Action completed)
+    public class TestStoreInitializer : IStoreInitializationStrategy
+	{
+		Func<Task> Completed;
+
+		public void Initialize(Func<Task> completed)
 		{
 			Completed = completed;
 		}
 
-		public void Complete() => Completed();
+		public async Task Complete() => await Completed();
 	}
 }

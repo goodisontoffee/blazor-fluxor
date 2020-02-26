@@ -6,7 +6,9 @@ using Xunit;
 
 namespace Blazor.Fluxor.UnitTests.StoreTests.ThreadingTests
 {
-	public class Dispatch
+    using System.Threading.Tasks;
+
+    public class Dispatch : IAsyncLifetime
 	{
 		const int NumberOfThreads = 10;
 		const int NumberOfIncrementsPerThread = 1000;
@@ -47,19 +49,23 @@ namespace Blazor.Fluxor.UnitTests.StoreTests.ThreadingTests
 			}
 		}
 
-		public Dispatch()
-		{
+        public async Task InitializeAsync()
+        {
 			StartEvent = new ManualResetEvent(false);
-			var storeInitializer = new TestStoreInitializer();
-			Store = new Store(storeInitializer);
-			Store.Initialize();
+            var storeInitializer = new TestStoreInitializer();
+            Store = new Store(storeInitializer);
+            Store.Initialize();
 
-			Feature = new CounterFeature();
-			Store.AddFeature(Feature);
+            Feature = new CounterFeature();
+            Store.AddFeature(Feature);
 
-			Feature.AddReducer(new IncrementCounterReducer());
-			storeInitializer.Complete();
+            Feature.AddReducer(new IncrementCounterReducer());
+            await storeInitializer.Complete();
 		}
 
-	}
+        public Task DisposeAsync()
+        {
+            return Task.CompletedTask;
+        }
+    }
 }
